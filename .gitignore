@@ -1,0 +1,10 @@
+# Docling conversion output (large files)
+25968844.md
+vlm-output/
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
