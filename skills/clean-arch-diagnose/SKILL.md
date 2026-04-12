@@ -22,8 +22,11 @@ Ask: "What symptoms are you experiencing?" Common symptoms include:
 - New team members struggle to onboard
 - "We need to rewrite everything"
 
-### Step 2: Gather Context
-Ask (if not provided):
+### Step 1.5: Load Team Profile
+Check if `.clean-arch-team-profile.md` exists in the project root. If it does, load it — the team context is essential for diagnosis. A "problem" in a startup might be acceptable technical debt; the same issue in an enterprise is cancer that needs treatment.
+
+### Step 2: Gather Context (supplement with team profile if available)
+Ask (if not provided and not in team profile):
 1. Platform? (Android/iOS/Flutter)
 2. App age and size? (screens, team members, years in development)
 3. Current architecture? (if known)

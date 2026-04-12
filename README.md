@@ -26,6 +26,7 @@ claude  # skills auto-detected
 
 | Command | What It Does |
 |---|---|
+| `/clean-arch team` | **Start here** — Profile your team for tailored architecture advice |
 | `/clean-arch` | Main advisor — routes to the right sub-skill based on your question |
 | `/clean-arch review` | Review your code against Clean Architecture principles |
 | `/clean-arch solid` | Check S.O.L.I.D principle compliance with red-flag checklists |
@@ -33,6 +34,18 @@ claude  # skills auto-detected
 | `/clean-arch pattern` | Choose between MVC, MVP, MVVM, and MVI for your context |
 | `/clean-arch test` | Design testable architecture and apply TDD |
 | `/clean-arch diagnose` | "What's wrong with my architecture?" — full diagnostic |
+
+### Team Profiling
+
+Run `/clean-arch team` first. It asks about your team composition, tech stack, experience levels, and product context — information the skills can't derive from code alone. The profile is saved to `.clean-arch-team-profile.md` and automatically loaded by all other skills.
+
+The book is explicit: *"Architectural design is context-dependent."* The same codebase gets very different advice depending on whether it's a 3-person startup or a 50-engineer enterprise team. The team profile captures:
+
+- **People**: Team size, iOS/Android/Flutter/KMP breakdown, seniority, RP knowledge, retention
+- **Product**: App type, complexity, offline needs, logic types, data streams per screen
+- **Context**: Product stage, expected lifespan, current architecture, biggest pain point
+
+This maps directly to the book's **Technical Price Triangle** (People + Complexity + Longevity) and determines whether you get **Scenario A** (Enterprise) or **Scenario B** (Startup) recommendations.
 
 ## What's Inside
 
@@ -103,6 +116,7 @@ references/
   pattern-decision-tree.md             # MV* comparison and decision flow
   testing-strategy.md                  # Testing pyramid, TDD schools, strategies
 skills/
+  clean-arch-team/SKILL.md             # Team profiling (start here)
   clean-arch-review/SKILL.md           # Architecture review
   clean-arch-solid/SKILL.md            # S.O.L.I.D compliance
   clean-arch-layers/SKILL.md           # Layer structuring
