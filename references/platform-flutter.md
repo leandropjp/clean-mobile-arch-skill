@@ -1178,3 +1178,131 @@ This gives you: immutability (book mandate), `copyWith` (new instances instead o
 | BLoC Testing | bloc_test (given/when/then) | - | Maps perfectly to book's AAA pattern |
 | Navigation | go_router | auto_route, Navigator 2.0 | go_router is the community standard |
 | Code Generation | build_runner | - | Used by freezed, json_serializable, injectable |
+
+---
+
+## Community-Validated Rules (from top Flutter skills on GitHub)
+
+*Sources: AbdelhakRazi/flutter-bloc-clean-architecture-skill, affaan-m/everything-claude-code (Flutter/Dart code review), flutter/skills (official Flutter team 23 skills)*
+
+### BLoC Pattern Enforcement (three-file pattern)
+
+```dart
+// 1. Events -- all extend Equatable
+abstract class ArticlesEvent extends Equatable {
+  const ArticlesEvent();
+}
+class LoadArticles extends ArticlesEvent {
+  @override
+  List<Object?> get props => [];
+}
+
+// 2. States -- all extend Equatable
+abstract class ArticlesState extends Equatable {
+  const ArticlesState();
+}
+class ArticlesLoading extends ArticlesState { ... }
+class ArticlesSuccess extends ArticlesState { final List<Article> articles; ... }
+class ArticlesError extends ArticlesState { final String message; ... }
+
+// 3. BLoC -- orchestrates event -> state
+class ArticlesBloc extends Bloc<ArticlesEvent, ArticlesState> {
+  ArticlesBloc(this._repository) : super(ArticlesInitial()) {
+    on<LoadArticles>(_onLoad);
+  }
+}
+```
+
+**Non-negotiable rule**: Always emit Loading before async work, then Success or Error. Never skip Loading.
+
+### Design System Enforcement
+
+```dart
+// WRONG -- hardcoded values scattered across widgets
+Container(
+  padding: EdgeInsets.all(16),
+  color: Color(0xFF2196F3),
+  child: Text('Hello', style: TextStyle(fontSize: 14)),
+)
+
+// CORRECT -- design system constants
+Container(
+  padding: EdgeInsets.all(AppSpacing.md),
+  color: AppColors.primary,
+  child: Text('Hello', style: AppTypography.bodyMedium),
+)
+```
+
+Create dedicated constant classes:
+- `AppColors` -- all colors from theme
+- `AppSpacing` -- `xs(4), sm(8), md(16), lg(24), xl(32)`
+- `AppRadius` -- border radius constants
+- `AppTypography` -- text styles
+
+### `build()` Method Hygiene
+
+| Anti-Pattern | Fix |
+|---|---|
+| Network calls in `build()` | Move to BLoC/Provider, trigger in `initState` or event |
+| Heavy computation in `build()` | Cache results, use `Selector` or `select()` |
+| `setState()` at root widget level | Localize state changes to smallest widget |
+| `UniqueKey()` in `build()` | Use stable keys (ValueKey, ObjectKey) |
+| Bare `catch (e)` without type | Always specify exception type |
+| `print()` statements | Use `log()` or proper logging package |
+
+### Boolean Flag Soup Anti-Pattern
+
+```dart
+// WRONG -- impossible states are representable
+class ArticlesState {
+  final bool isLoading;
+  final bool hasError;
+  final String? errorMessage;
+  final List<Article>? articles;
+  // Can be isLoading=true AND hasError=true -- impossible!
+}
+
+// CORRECT -- sealed types make impossible states impossible
+sealed class ArticlesState {}
+class ArticlesLoading extends ArticlesState {}
+class ArticlesSuccess extends ArticlesState { final List<Article> articles; }
+class ArticlesError extends ArticlesState { final String message; }
+```
+
+### Barrel File Conventions
+
+```dart
+// lib/features/auth/auth.dart (barrel file)
+export 'bloc/auth_bloc.dart';
+export 'view/login_page.dart';
+export 'view/register_page.dart';
+
+// Usage: single import
+import 'package:app/features/auth/auth.dart';
+```
+
+**Rule**: Create barrel files per feature and per layer (`data/data.dart`, `view/view.dart`). Code used by 2+ features moves to `shared/`.
+
+### Flutter Testing Best Practices
+
+```dart
+// bloc_test maps to AAA pattern
+blocTest<ArticlesBloc, ArticlesState>(
+  'emits [loading, success] when LoadArticles added',
+  build: () {                                        // Arrange
+    when(() => repository.getArticles())
+        .thenAnswer((_) async => testArticles);
+    return ArticlesBloc(repository);
+  },
+  act: (bloc) => bloc.add(LoadArticles()),          // Act
+  expect: () => [                                    // Assert
+    ArticlesLoading(),
+    ArticlesSuccess(testArticles),
+  ],
+);
+```
+
+- Target 80%+ coverage on business logic
+- Test ALL state transitions (loading -> success, loading -> error, retry)
+- Use `pumpAndSettle()` for widget tests with animations
+- Run `flutter analyze` in CI, block merges on failures

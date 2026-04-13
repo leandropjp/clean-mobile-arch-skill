@@ -927,3 +927,63 @@ The startup approach trades separation for speed. The book says this is fine for
 | Architecture | MVVM (mainstream) | TCA (opinionated, steep curve, best testability) | TCA is production-ready but not mainstream. Plain MVVM + CA is most common. |
 
 **Rule from the book**: Select libraries LAST. Architecture should banish them to the outermost layer. Every third-party library is accessed through a protocol so it can be replaced.
+
+---
+
+## Community-Validated Rules (from top iOS skills on GitHub)
+
+*Sources: twostraws/SwiftUI-Agent-Skill, AvdLee/SwiftUI-Agent-Skill, johnrogers/claude-swift-engineering, pointfreeco TCA discussions, kylehughes/swift-concurrency-migration-skill*
+
+### Swift 6 Concurrency
+
+1. **All ViewModels should be `@MainActor`** -- UI state updates must be on the main actor.
+2. **`Sendable` conformance is mandatory across actor boundaries** -- structs are Sendable by default if all properties are; classes need explicit conformance.
+3. **Replace `DispatchQueue` with structured concurrency** -- Use `Task`, `TaskGroup`, `AsyncStream`. Not unstructured `Task` spawning.
+4. **Enable strict concurrency checking incrementally** -- Start with "Complete" warnings before enabling Swift 6 mode.
+5. **Swift 6.2 introduced `@concurrent` attribute** -- changes the default isolation model. Keep up to date.
+6. **Not everything needs to be an actor** -- avoid over-isolation. Use actors for mutable shared state, not for everything.
+7. **Wrap legacy Combine pipelines in `AsyncStream`** when bridging to async/await.
+
+### SwiftUI Performance Rules
+
+1. **Use `.task` instead of `.onAppear` for async work** -- `.onAppear` fires multiple times during navigation; `.task` is tied to view lifecycle and auto-cancels.
+2. **Never perform heavy computation in `body`** -- DateFormatter init costs 2-5ms per call. Move to stored properties or `.task`.
+3. **ForEach must use stable `Identifiable` IDs, never array indices** -- Index-based causes O(n^2) diffs, broken animations, state loss on deletion.
+4. **Environment values do NOT propagate to sheets/covers/popovers** -- Explicitly pass `.environmentObject()` to presentation contexts.
+5. **GeometryReader expands to fill all space** -- Use `.background(GeometryReader {...})` to measure without disrupting layout.
+6. **Avoid inline filtering in ForEach** -- filter data before rendering, not inside the view builder.
+
+### @Observable Best Practices (iOS 17+)
+
+1. **Use `@Observable` for new code, not `@ObservedObject`/`@StateObject`** -- `@Observable` only triggers updates for properties actually read by the view.
+2. **Use `@ObservationIgnored` for non-UI properties** -- prevents unnecessary view updates.
+3. **Never use `@State` with reference types (classes)** -- causes recreation on every update, memory leaks, orphaned subscriptions.
+4. **Use granular @Observable objects** -- avoid monolithic state objects that re-render entire trees.
+5. **1 ViewModel = 1 Screen** -- if sub-sections have independent data needs, compose child ViewModels.
+
+### Navigation Patterns
+
+1. **Use Route enums for type-safe navigation** -- `enum Route: Hashable { case product(Product) }`.
+2. **Centralize routing with a Router/Coordinator** injected via environment.
+3. **Each tab maintains its own NavigationStack** in TabView.
+4. **Navigation state should be serializable** for state restoration and deep linking.
+5. **Never mix deprecated (NavigationView) and modern (NavigationStack) APIs**.
+
+### Accessibility (Top AI-Agent Failure Mode)
+
+1. **All interactive controls must have VoiceOver accessibility labels and hints**.
+2. **Never hardcode font sizes** -- respect Dynamic Type scaling.
+3. **Group related elements** with `accessibilityElement(children: .combine)`.
+4. **Test with VoiceOver enabled** -- AI agents frequently create buttons invisible to screen readers.
+
+### Anti-Patterns Consistently Flagged by Community Skills
+
+1. Massive ViewModel (500+ lines handling multiple concerns)
+2. Business logic in SwiftUI Views
+3. Core Data `@FetchRequest` directly in Views (framework leaking into presentation)
+4. Singleton abuse (`NetworkManager.shared`) instead of protocol-based DI
+5. Concrete dependencies instead of protocols
+6. Using deprecated APIs (NavigationView, ObservableObject for new code)
+7. Manual Combine pipelines in new code (use async/await)
+8. Creating ViewModels in navigation destinations (memory leak 5-10MB per navigation cycle)
+9. Mixing deprecated and modern navigation APIs in the same flow

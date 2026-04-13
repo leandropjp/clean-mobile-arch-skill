@@ -1115,3 +1115,117 @@ fun UserPlain.toModel() = User(
 | Testing | JUnit 5 + MockK + Turbine | Mockito-Kotlin (legacy) | MockK dominates Kotlin-first. Turbine is the standard for Flow testing. |
 | UI Testing | Compose Testing | Espresso (View-based legacy) | Compose test rules are simpler than Espresso |
 | Architecture | MVI/UDF + Compose (Google's direction) | MVVM + StateFlow | MVI with sealed classes is the dominant pattern. Google calls it "UDF". |
+| Snapshot Testing | Paparazzi (JVM, no emulator) | Compose Preview Screenshot Testing | Multi-state, dark/light mode verification |
+
+---
+
+## Community-Validated Rules (from top Android skills on GitHub)
+
+*Sources: new-silvermoon/awesome-android-agent-skills, dpconde/claude-android-skill, Drjacky/claude-android-ninja, javiercamarenatriguero/android-skills, Meet-Miyani/compose-skill*
+
+### MVI State Management (compose-skill "four-bucket" model)
+
+Organize screen state into four concerns:
+1. **UI state** -- visual properties (toolbar title, button enabled)
+2. **Content state** -- domain data (list items, user profile)
+3. **Loading/error state** -- async operation status
+4. **Navigation state** -- where to go next
+
+```kotlin
+// Single state class combines all four buckets
+data class ArticlesUiState(
+    val articles: List<ArticleUi> = emptyList(),  // content
+    val isLoading: Boolean = false,                // loading
+    val error: String? = null,                     // error
+    val toolbarTitle: String = "Articles"           // UI
+)
+
+// One-shot actions via Channel, NOT boolean flags
+sealed interface ArticlesEffect {
+    data class NavigateToDetail(val id: String) : ArticlesEffect
+    data class ShowSnackbar(val message: String) : ArticlesEffect
+}
+```
+
+**Critical rule**: Use `Channel<Effect>` for one-shot actions (navigation, snackbar, toast). Boolean flags (`shouldNavigate = true`) cause recomposition noise and state leaks.
+
+### Compose Anti-Patterns (community-validated)
+
+| Anti-Pattern | Why It's Bad | Fix |
+|---|---|---|
+| Scattered `mutableStateOf` in composables | Lost single source of truth | Hoist to ViewModel StateFlow |
+| Boolean flags for one-shot actions | Recomposition noise, state leak on config change | Use `Channel<Effect>` |
+| Navigation calls directly in composables | Breaks testability, couples UI to navigation | Effect-driven navigation via ViewModel |
+| Mocking ViewModel in tests | Tests lie about real behavior | Test real ViewModel with mocked repos |
+| Direct `NavController` calls from composables | Tight coupling | Route enum + Coordinator |
+| `collectAsState()` without lifecycle | Collects when app is in background | Use `collectAsStateWithLifecycle()` |
+
+### Module Structure Convention (NowInAndroid-aligned)
+
+```
+:app                          # Framework entry point
+:core:data                    # Repository implementations
+:core:database                # Room DAOs, entities
+:core:network                 # Retrofit services, API models
+:core:model                   # Domain models (pure Kotlin)
+:core:domain                  # Use Cases
+:core:ui                      # Shared composables
+:core:designsystem            # Theme, colors, typography
+:core:testing                 # Test utilities, fakes
+:feature:home                 # Feature module
+  api/                        # Public navigation contracts
+  impl/                       # Private implementation
+    ui/                       # Composables
+    presentation/             # ViewModel, state
+    data/                     # Feature-specific data
+```
+
+**Key rule**: API/impl split enforced at Gradle level. Cross-feature communication only via API contracts.
+
+### Testing Patterns
+
+**Turbine for Flow testing:**
+```kotlin
+@Test
+fun `loads articles on init`() = runTest {
+    viewModel.state.test {
+        assertEquals(ArticlesUiState(isLoading = true), awaitItem())
+        assertEquals(ArticlesUiState(articles = testArticles), awaitItem())
+        cancelAndIgnoreRemainingEvents()
+    }
+}
+```
+
+**Fakes vs Mocks debate**: Both are community-validated.
+- **Fakes** (NowInAndroid school): Interface-based test doubles, no mocking framework. Better for testing behavior, easier to maintain.
+- **Mocks** (MockK school): `@MockK` + `every { }` + `verify { }`. Better for verifying interactions, precise expectations.
+- **Book alignment**: The book's Classicist/Chicago TDD = fakes. Mockist/London TDD = mocks. Both valid.
+
+**GIVEN/WHEN/THEN naming:**
+```kotlin
+@Test
+fun `GIVEN valid credentials WHEN login clicked THEN emits success state`()
+```
+
+### Hilt DI Patterns
+
+```kotlin
+// Per screen: @HiltViewModel
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val loginUseCase: LoginUseCase,
+    private val savedStateHandle: SavedStateHandle
+) : ViewModel()
+
+// In Compose: hiltViewModel()
+@Composable
+fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) { }
+
+// Module structure: one per concern
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class RepositoryModule {
+    @Binds
+    abstract fun bindArticleRepository(impl: ArticleRepositoryImpl): ArticleRepository
+}
+```
