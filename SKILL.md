@@ -62,6 +62,14 @@ The team profile contains: team size, tech stack distribution (iOS/Android/Flutt
 - `references/pattern-decision-tree.md` -- MV* pattern comparison and decision flow
 - `references/testing-strategy.md` -- Testing pyramid, TDD schools, strategies
 
+### Platform-Specific References (load based on team profile)
+- `references/platform-ios.md` -- Swift/SwiftUI layer mapping, DI, testing, anti-patterns
+- `references/platform-android.md` -- Kotlin/Compose layer mapping, DI, testing, anti-patterns
+- `references/platform-flutter.md` -- Dart/BLoC/Riverpod layer mapping, DI, testing, anti-patterns
+- `references/platform-kmp.md` -- KMP shared/platform source sets, expect/actual, SKIE
+
+**When the team profile specifies a platform, load the matching platform reference alongside the universal references.** For multi-platform teams (e.g., iOS + Android, or KMP), load all relevant platform files.
+
 ## Rules
 
 1. NEVER recite the book's theory unprompted. Apply frameworks to the USER's specific code/situation.
